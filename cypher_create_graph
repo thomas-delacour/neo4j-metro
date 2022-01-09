@@ -1,0 +1,22 @@
+match(n) detach delete n;
+
+load csv with headers from 'https://github.com/pauldechorgnat/cool-datasets/raw/master/ratp/stations.csv' as row
+create (s:Station {name: row.nom_clean, station: row.nom_gare, x: toFloat(row.x), y: toFloat(row.y), traffic: row.Trafic, city: row.Ville, line: row.ligne})
+with s
+match(n {name: s.name})
+match(c) where c.name = n.name and c<>n
+merge (n)-[:Connection {time: toInteger(4)}]->(c)
+merge (n)<-[:Connection {time: toInteger(4)}]-(c);
+
+// Speed on foot is 66.6 m/s
+match(n)
+match(c) where distance(point({x: c.x, y:c.y}), point({x:n.x, y:n.y})) <= 1000 and c.name<>n.name
+merge (n)-[:Onfoot {time: distance(point({x: c.x, y:c.y}), point({x:n.x, y:n.y}))/66.6}]->(c)
+merge (n)<-[:Onfoot {time: distance(point({x: c.x, y:c.y}), point({x:n.x, y:n.y}))/66.6}]-(c);
+
+
+// Speed on train is 666.6 m/s
+load csv with headers from 'https://github.com/pauldechorgnat/cool-datasets/raw/master/ratp/liaisons.csv' as row
+match(start: Station {name: row.start, line: row.ligne})
+match(stop: Station {name: row.stop, line: row.ligne})
+create (start)-[:Train {time: distance(point({x: start.x, y:start.y}), point({x:stop.x, y:stop.y}))/666.6}]->(stop);
