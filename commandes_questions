@@ -1,0 +1,39 @@
+// Quel est le nombre de correspondances par station ? 
+MATCH (n:Station)-[r:Connection]->() RETURN n, COUNT(r)
+
+
+// Quel est le nombre de stations à moins de deux kilomètres de la station LADEFENSE (on pourra prendre la distance brute sans considération de relation) ?
+match(s:Station {name: 'LADEFENSE'})
+match(c) where distance(point({x: c.x, y:c.y}), point({x:s.x, y:s.y})) < 2000 and c.name<>s.name
+return count(c)
+
+
+// Combien de temps faut-il pour aller en metro de LADEFENSE à CHATEAUDEVINCENNES ?
+match(start: Station {name: 'LADEFENSE'})
+match(stop: Station {name: 'CHATEAUDEVINCENNES'})
+match p = (start)-[r:Train *]->(stop)
+return reduce(temps = 0, n IN r | temps + n.time) AS temps
+
+
+// Combien de temps faut-il pour aller à pied de LADEFENSE à CHATEAUDEVINCENNES (on pourra considérer que tout le chemin se fait à pied, sans considération de relation) ?
+match(start: Station {name: 'LADEFENSE'})
+match(stop: Station {name: 'CHATEAUDEVINCENNES'})
+return distance(point({x: start.x, y:start.y}), point({x:stop.x, y:stop.y}))/66.6
+
+// Est-il plus rapide de faire un changement à SAINTLAZARE pour aller de MONTPARNASSEBIENVENUE à GABRIELPERI ?
+
+
+
+// Combien de stations se trouvent dans un rayon de 10 stations par train autour de SAINTLAZARE ?
+match(start: Station {name: 'STLAZARE'})
+match (start)-[:Train *..10]->(s) where s.name<>start.name
+return count( distinct s)
+
+
+// Combien de stations se trouvent dans un rayon de 20 minutes par train autour de SAINTLAZARE ?
+match(start: Station {name: 'STLAZARE'})
+match p = (start)-[r:Train *]->(s) where s.name<>start.name
+with [x in r | x.time] as time_list, s
+with reduce(res=0, x in time_list | res + x) as temps, s
+where temps < 20
+return count(distinct s) as nombre_de_station
