@@ -1,11 +1,13 @@
 // Quel est le nombre de correspondances par station ? 
-MATCH (n:Station)-[r:Connection]->() RETURN n, COUNT(r)
+MATCH (n:Station)-[r:Connection]->() RETURN n, COUNT(r) as nb_correspondance
 
 
 // Quel est le nombre de stations à moins de deux kilomètres de la station LADEFENSE (on pourra prendre la distance brute sans considération de relation) ?
 match(s:Station {name: 'LADEFENSE'})
 match(c) where distance(point({x: c.x, y:c.y}), point({x:s.x, y:s.y})) < 2000 and c.name<>s.name
 return count(c)
+
+// Il y a 2 stations à moins de deux kilomètres de la station LADEFENSE
 
 
 // Combien de temps faut-il pour aller en metro de LADEFENSE à CHATEAUDEVINCENNES ?
@@ -14,20 +16,38 @@ match(stop: Station {name: 'CHATEAUDEVINCENNES'})
 match p = (start)-[r:Train *]->(stop)
 return reduce(temps = 0, n IN r | temps + n.time) AS temps
 
+// Il faut 24.68 min pour faire le trajet
 
 // Combien de temps faut-il pour aller à pied de LADEFENSE à CHATEAUDEVINCENNES (on pourra considérer que tout le chemin se fait à pied, sans considération de relation) ?
 match(start: Station {name: 'LADEFENSE'})
 match(stop: Station {name: 'CHATEAUDEVINCENNES'})
 return distance(point({x: start.x, y:start.y}), point({x:stop.x, y:stop.y}))/66.6
 
-// Est-il plus rapide de faire un changement à SAINTLAZARE pour aller de MONTPARNASSEBIENVENUE à GABRIELPERI ?
+// Il faut 237.81 min pour faire le trajet à pied
 
+// Est-il plus rapide de faire un changement à SAINTLAZARE pour aller de MONTPARNASSEBIENVENUE à GABRIELPERI ?
+MATCH (start:Station {name: 'MONTPARNASSEBIENVENUE'})
+MATCH (end:Station {name: 'GABRIELPERI'})
+CALL gds.alpha.shortestPath.stream({
+  nodeQuery: 'MATCH (n) RETURN id(n) as id',
+  relationshipQuery: 'MATCH (n1)-[r]-(n2) RETURN id(r) as id, id(n1) as source, id(n2) as target, r.time as time',
+  startNode: start,
+  endNode: end,
+  relationshipWeightProperty: 'time'
+})
+YIELD nodeId, cost
+RETURN gds.util.asNode(nodeId), cost
+
+// Si le point de départ est la station MONTPARNASSEBIENVENUE sur la ligne 12 il est plus rapide de faire un changement à SAINTLAZARE
+// Si le départ se fait sur une autre ligne le plus rapide est de prendre est de suivre la ligne 13 jusqu'à GABRIELPERI
 
 
 // Combien de stations se trouvent dans un rayon de 10 stations par train autour de SAINTLAZARE ?
 match(start: Station {name: 'STLAZARE'})
 match (start)-[:Train *..10]->(s) where s.name<>start.name
 return count( distinct s)
+
+// Il y a 73 stations dans un rayon de 10 stations par train autour de SAINTLAZARE
 
 
 // Combien de stations se trouvent dans un rayon de 20 minutes par train autour de SAINTLAZARE ?
@@ -37,3 +57,5 @@ with [x in r | x.time] as time_list, s
 with reduce(res=0, x in time_list | res + x) as temps, s
 where temps < 20
 return count(distinct s) as nombre_de_station
+
+// Il y a 91 stations dans un rayon de 20 minutes par train autour de SAINTLAZARE
